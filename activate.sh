@@ -131,7 +131,12 @@ autoenv_source() {
 
 autoenv_cd()
 {
-  if builtin cd "$@"
+  if declare -f autoenv_prev_cd >/dev/null ; then
+    autoenv_prev_cd "$@"
+  else
+    builtin cd "$@"
+  fi
+  if (( $? == 0 ))
   then
     autoenv_init
     return 0
@@ -139,6 +144,10 @@ autoenv_cd()
     return $?
   fi
 }
+
+if declare -f cd >/dev/null ; then
+    eval "autoenv_prev_$(declare -f cd)"
+fi
 
 cd() {
   autoenv_cd "$@"
