@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 AUTOENV_AUTH_FILE=~/.autoenv_authorized
-if [ -z "$AUTOENV_ENV_FILENAME" ]; then
-    AUTOENV_ENV_FILENAME=.env
+if [ -z "$AUTOENV_ENTER_FILENAME" ]; then
+  AUTOENV_ENTER_FILENAME=.env-enter
+fi
+if [ -z "$AUTOENV_LEAVE_FILENAME" ]; then
+  AUTOENV_LEAVE_FILENAME=.env-leave
 fi
 
 if [[ -n "${ZSH_VERSION}" ]]
@@ -9,36 +12,54 @@ then __array_offset=0
 else __array_offset=1
 fi
 
-autoenv_init()
+autoenv_files()
 {
-  defIFS=$IFS
-  IFS=$(echo -en "\n\b")
-
-  typeset target home _file
+  typeset _src _dst _home
   typeset -a _files
-  target=$1
-  home="$(dirname $HOME)"
+  _home="$(dirname $HOME)"
+  _env="$1"
+  _src="$2"
+  _dst="$3"
 
   _files=( $(
-    while [[ "$PWD" != "/" && "$PWD" != "$home" ]]
+    builtin cd "$_src"
+    while [[ "$PWD" != "/" && "$PWD" != "$home" && ! "$_dst" =~ "$PWD" ]]
     do
-      _file="$PWD/$AUTOENV_ENV_FILENAME"
+      _file="$PWD/$_env"
       if [[ -e "${_file}" ]]
       then echo "${_file}"
       fi
       builtin cd .. &>/dev/null
     done
   ) )
+  echo ${_files[@]}
+}
 
-  _file=${#_files[@]}
-  while (( _file > 0 ))
+
+autoenv_walk()
+{
+  typeset _src _dst _file _leave _n _i
+  _src="$1"
+  _dst="$2"
+  _leave=( $(autoenv_files "$AUTOENV_LEAVE_FILENAME" "$_src" "$_dst" ) )
+  _enter=( $(autoenv_files "$AUTOENV_ENTER_FILENAME" "$_dst" "$_src" ) )
+  _n=${#_leave[@]}
+  _i=$__array_offset
+  while (( _i < _n + __array_offset ))
   do
-    envfile=${_files[_file-__array_offset]}
+    envfile=${_leave[_i-__array_offset]}
     autoenv_check_authz_and_run "$envfile"
-    : $(( _file -= 1 ))
+    : $(( _i += 1 ))
   done
 
-  IFS=$defIFS
+  _n=${#_enter[@]}
+  _i=$_n
+  while (( _i > 0 ))
+  do
+    envfile=${_enter[_i-__array_offset]}
+    autoenv_check_authz_and_run "$envfile"
+    : $(( _i -= 1 ))
+  done
 }
 
 autoenv_run() {
@@ -131,14 +152,17 @@ autoenv_source() {
 
 autoenv_cd()
 {
+  typeset _leaving="$PWD"
+
   if declare -f autoenv_prev_cd >/dev/null ; then
     autoenv_prev_cd "$@"
   else
     builtin cd "$@"
   fi
+
   if (( $? == 0 ))
   then
-    autoenv_init
+    autoenv_walk "$_leaving" "$PWD"
     return 0
   else
     return $?
@@ -153,4 +177,4 @@ cd() {
   autoenv_cd "$@"
 }
 
-cd .
+autoenv_walk "/" "$PWD"
