@@ -150,7 +150,11 @@ autoenv_source() {
   eval "$allexport"
 }
 
-autoenv_cd()
+if declare -f cd >/dev/null ; then
+    eval "autoenv_prev_$(declare -f cd)"
+fi
+
+cd()
 {
   typeset _leaving="$PWD"
 
@@ -164,17 +168,8 @@ autoenv_cd()
   then
     autoenv_walk "$_leaving" "$PWD"
     return 0
-  else
-    return $?
   fi
-}
-
-if declare -f cd >/dev/null ; then
-    eval "autoenv_prev_$(declare -f cd)"
-fi
-
-cd() {
-  autoenv_cd "$@"
+  return $?
 }
 
 autoenv_walk "/" "$PWD"
