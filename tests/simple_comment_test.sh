@@ -16,7 +16,7 @@ cd $test_dir
 ( cd a/b ) # match=/-a-\n-a/b-/ ; status=0
 ( cd c   ) # match=/$^/ ; status=0
 ( cd c/d ) # match!=/-c-/ ; match=/-c/d-/ ; status=0
-( cd e   ) # match!=/^$/ ; status!=0
+( cd e 2>&1 ) | grep 'No such.*directory' >&/dev/null # match!=/^$/ ; status!=0
 
 ## teardown
 rm -rf "$test_dir"
