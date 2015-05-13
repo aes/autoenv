@@ -1,23 +1,6 @@
 #!/bin/bash --norc
 
-AUTOENV="$PWD"
-
-D="$(mktemp -d ${TMPDIR:=/tmp}/autoenv-test-XXXXXX)"
-
-clean_up()
-{
-    rm -Rf "$D"
-}
-
-trap clean_up INT TERM EXIT
-
-cd "$D" || exit 5
-
-export HOME="$D"
-
-. "$AUTOENV"/activate.sh
-
-mkdir -p foo{,/{bar,baz}{,/{moo,meh}}}
+. tests/common.sh
 
 for n in foo{,/{bar,baz}{,/{moo,meh}}}/.env-{enter,leave}; do
     echo "echo $n >> '$D'/what" > "$n"
