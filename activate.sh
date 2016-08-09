@@ -16,14 +16,14 @@ autoenv_files()
 {
   typeset _src _dst _home
   typeset -a _files
-  _home="$(dirname $HOME)"
+  _home="$(dirname "$HOME")"
   _env="$1"
   _src="$2"
   _dst="$3"
 
   _files=( $(
     builtin cd "$_src"
-    while [[ "$PWD" != "/" && "$PWD" != "$home" && ! "$_dst" =~ "$PWD" ]]
+    while [[ "$PWD" != "/" && "$PWD" != "$_home" && ! "$_dst" =~ $PWD ]]
     do
       _file="$PWD/$_env"
       if [[ -e "${_file}" ]]
@@ -32,6 +32,7 @@ autoenv_files()
       builtin cd .. &>/dev/null
     done
   ) )
+  # shellcheck disable=2068
   echo ${_files[@]}
 }
 
@@ -48,7 +49,9 @@ autoenv_walk()
   while (( _i < _n + __array_offset ))
   do
     envfile=${_leave[_i-__array_offset]}
-    autoenv_check_authz_and_run "$envfile"
+    if [ -n "$envfile" ]; then
+      autoenv_check_authz_and_run "$envfile"
+    fi
     : $(( _i += 1 ))
   done
 
@@ -57,7 +60,9 @@ autoenv_walk()
   while (( _i > 0 ))
   do
     envfile=${_enter[_i-__array_offset]}
-    autoenv_check_authz_and_run "$envfile"
+    if [ -n "$envfile" ]; then
+      autoenv_check_authz_and_run "$envfile"
+    fi
     : $(( _i -= 1 ))
   done
 }
@@ -78,7 +83,7 @@ autoenv_printf() {
 }
 
 autoenv_indent() {
- cat -e $@ | sed 's/.*/autoenv:     &/' 
+  cat -e "$@" | sed 's/.*/autoenv:     &/'
 }
 
 autoenv_hashline()
@@ -98,6 +103,7 @@ autoenv_check_authz()
   envfile=$1
   hash=$(autoenv_hashline "$envfile")
   touch $AUTOENV_AUTH_FILE
+  # shellcheck disable=1001
   \grep -Gq "$hash" $AUTOENV_AUTH_FILE
 }
 
@@ -131,7 +137,9 @@ autoenv_check_authz_and_run()
 autoenv_deauthorize_env() {
   typeset envfile
   envfile=$1
+  # shellcheck disable=1001
   \grep -Gv "$envfile:" "$AUTOENV_AUTH_FILE" > $AUTOENV_AUTH_FILE.$$.tmp
+  # shellcheck disable=1001
   \mv "$AUTOENV_AUTH_FILE.$$.tmp" "$AUTOENV_AUTH_FILE"
 }
 
@@ -151,6 +159,7 @@ autoenv_source() {
 }
 
 if declare -f cd >/dev/null ; then
+    # shellcheck disable=2034
     eval "autoenv_prev_$(declare -f cd)"
 fi
 
@@ -158,6 +167,7 @@ cd()
 {
   typeset _leaving="$PWD"
 
+  # shellcheck disable=2034
   if declare -f autoenv_prev_cd >/dev/null ; then
     autoenv_prev_cd "$@"
   else
