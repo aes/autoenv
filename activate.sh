@@ -1,15 +1,12 @@
-#!/usr/bin/env bash
+#!/bin/bash
+# -c echo source
 AUTOENV_AUTH_FILE=~/.autoenv_authorized
-if [ -z "$AUTOENV_ENTER_FILENAME" ]; then
-  AUTOENV_ENTER_FILENAME=.env-enter
-fi
-if [ -z "$AUTOENV_LEAVE_FILENAME" ]; then
-  AUTOENV_LEAVE_FILENAME=.env-leave
-fi
+: "${AUTOENV_ENTER_FILENAME:=.env-enter}"
+: "${AUTOENV_LEAVE_FILENAME:=.env-leave}"
 
 if [[ -n "${ZSH_VERSION}" ]]
-then __array_offset=0
-else __array_offset=1
+then __array_offset=1
+else __array_offset=0
 fi
 
 autoenv_files()
@@ -32,6 +29,7 @@ autoenv_files()
       builtin cd .. &>/dev/null
     done
   ) )
+
   # shellcheck disable=2068
   echo ${_files[@]}
 }
@@ -44,33 +42,28 @@ autoenv_walk()
   _dst="$2"
   _leave=( $(autoenv_files "$AUTOENV_LEAVE_FILENAME" "$_src" "$_dst" ) )
   _enter=( $(autoenv_files "$AUTOENV_ENTER_FILENAME" "$_dst" "$_src" ) )
-  _n=${#_leave[@]}
-  _i=$__array_offset
-  while (( _i < _n + __array_offset ))
-  do
-    envfile=${_leave[_i-__array_offset]}
-    if [ -n "$envfile" ]; then
-      autoenv_check_authz_and_run "$envfile"
-    fi
-    : $(( _i += 1 ))
-  done
 
-  _n=${#_enter[@]}
+  _n=$(( ${#_leave[@]} + __array_offset - 1 ))
   _i=$_n
-  while (( _i > 0 ))
+  while (( _i >= __array_offset ))
   do
-    envfile=${_enter[_i-__array_offset]}
+    envfile=${_leave[_i]}
     if [ -n "$envfile" ]; then
       autoenv_check_authz_and_run "$envfile"
     fi
     : $(( _i -= 1 ))
   done
-}
 
-autoenv_run() {
-  typeset _file
-  _file="$(realpath "$1")"
-  autoenv_check_authz_and_run "${_file}"
+  _n=$(( ${#_enter[@]} + __array_offset - 1))
+  _i=$__array_offset
+  while (( _i <= _n ))
+  do
+    envfile=${_enter[_i]}
+    if [ -n "$envfile" ]; then
+      autoenv_check_authz_and_run "$envfile"
+    fi
+    : $(( _i += 1 ))
+  done
 }
 
 autoenv_env() {
