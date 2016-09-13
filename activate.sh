@@ -144,10 +144,13 @@ autoenv_authorize_env() {
 }
 
 autoenv_source() {
-  typeset allexport
+  typeset allexport p
+  p="$(pwd)"
   allexport=$(set +o | grep allexport)
   set -a
+  builtin cd "$(dirname "$1")"
   source "$1"
+  builtin cd "$p"
   eval "$allexport"
 }
 
